@@ -1,6 +1,8 @@
+from discord import Message, reaction
 from client import client
 from loguru import logger
 
+from utils import handler_reaction
 from bot_emoji import EMOJI
 
 
@@ -24,27 +26,15 @@ async def on_message(message):
 
 @client.event
 async def on_reaction_add(reaction, user):
-    logger.info("Reaction Received")
-    if reaction.message.author != client.user or user == client.user:
-        return
+    await handler_reaction(reaction.message, user, client.user)
 
-    value = EMOJI.get(reaction.emoji)
-    if not value:
-        return
 
-    sum_votes = 0
-    total_votes = 0
-    for r in  reaction.message.reactions:
-        reaction_count = r.count - 1
-        sum_votes += EMOJI.get(r.emoji, 0) * reaction_count
-        total_votes += reaction_count
+@client.event
+async def on_raw_reaction_remove(payload):
+    channel = client.get_channel(payload.channel_id)
+    message = await channel.fetch_message(payload.message_id)
 
-    story_points = sum_votes / total_votes
-
-    content = reaction.message.content.split("SP: ")[0]
-    content += f"SP: {story_points}"
-    await reaction.message.edit(content=content)
-
+    await handler_reaction(message, payload.member, client.user)
 
 if __name__ == "__main__":
     from config import TOKEN
